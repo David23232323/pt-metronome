@@ -137,7 +137,6 @@ function App() {
   const handleToggle = () => {
     if (!isPlaying) {
       initAudio();
-      // Unlock speech synthesis on mobile with a silent utterance
       const dummy = new SpeechSynthesisUtterance("");
       dummy.volume = 0;
       window.speechSynthesis.speak(dummy);
@@ -190,15 +189,29 @@ function App() {
         </label>
         {timerEnabled && (
           <div className="timer-controls">
-            <input 
-              type="number" 
-              step="1"
-              inputMode="numeric"
-              value={timerMinutes} 
-              onChange={(e) => setTimerMinutes(Math.max(1, parseInt(e.target.value) || 1))}
-              disabled={isPlaying}
-            />
-            <span>min</span>
+            <div className="preset-buttons">
+              {[1, 3, 5, 10].map(m => (
+                <button 
+                  key={m} 
+                  className={`preset-btn ${timerMinutes === m ? 'active' : ''}`}
+                  onClick={() => setTimerMinutes(m)}
+                  disabled={isPlaying}
+                >
+                  {m}m
+                </button>
+              ))}
+            </div>
+            <div className="manual-timer">
+              <input 
+                type="number" 
+                step="1"
+                inputMode="numeric"
+                value={timerMinutes} 
+                onChange={(e) => setTimerMinutes(Math.max(1, parseInt(e.target.value) || 1))}
+                disabled={isPlaying}
+              />
+              <span>min</span>
+            </div>
             <div className="time-left">{formatTime(timeLeft)}</div>
           </div>
         )}
