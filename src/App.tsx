@@ -36,6 +36,9 @@ function App() {
     if (!audioCtxRef.current) {
       audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
     }
+    if (audioCtxRef.current.state === 'suspended') {
+      audioCtxRef.current.resume();
+    }
   }, []);
 
   // Timer logic
@@ -118,7 +121,6 @@ function App() {
 
   useEffect(() => {
     if (isPlaying) {
-      initAudio();
       nextClickTimeRef.current = audioCtxRef.current!.currentTime;
       nextSpeechTimeRef.current = audioCtxRef.current!.currentTime + readFrequency;
       if (readMode === 'sequential') setCurrentIndex(0);
@@ -130,9 +132,16 @@ function App() {
     return () => {
       if (timerRef.current) cancelAnimationFrame(timerRef.current);
     };
-  }, [isPlaying, scheduler, initAudio, readFrequency, readMode]);
+  }, [isPlaying, scheduler, readFrequency, readMode]);
 
   const handleToggle = () => {
+    if (!isPlaying) {
+      initAudio();
+      // Unlock speech synthesis on mobile with a silent utterance
+      const dummy = new SpeechSynthesisUtterance("");
+      dummy.volume = 0;
+      window.speechSynthesis.speak(dummy);
+    }
     setIsPlaying(!isPlaying);
   };
 
@@ -184,6 +193,7 @@ function App() {
             <input 
               type="number" 
               step="1"
+              inputMode="numeric"
               value={timerMinutes} 
               onChange={(e) => setTimerMinutes(Math.max(1, parseInt(e.target.value) || 1))}
               disabled={isPlaying}
@@ -236,6 +246,7 @@ function App() {
               <input 
                 type="number" 
                 step="0.5"
+                inputMode="decimal"
                 value={readFrequency} 
                 onChange={(e) => setReadFrequency(Math.max(0.5, parseFloat(e.target.value) || 0.5))}
               />
@@ -245,6 +256,7 @@ function App() {
               <input 
                 type="number" 
                 step="0.1"
+                inputMode="decimal"
                 value={readVariance} 
                 onChange={(e) => setReadVariance(Math.max(0, parseFloat(e.target.value) || 0))}
                 disabled={readMode !== 'random'}
