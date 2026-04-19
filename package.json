@@ -1,9 +1,9 @@
 {
-  "name": "metronome",
+  "name": "PT-Metronome",
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "homepage": "https://David23232323.github.io/metronome",
+  "homepage": "https://David23232323.github.io/PT-Metronome",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",

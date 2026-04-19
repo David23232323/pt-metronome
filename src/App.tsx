@@ -130,7 +130,7 @@ function App() {
 
   return (
     <div className="container">
-      <h1>Metronome +</h1>
+      <h1>PT-Metronome</h1>
       
       <div className="section metronome-controls">
         <div className="bpm-display">
