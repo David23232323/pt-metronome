@@ -1,0 +1,182 @@
+:root {
+  --primary: #646cff;
+  --primary-hover: #535bf2;
+  --bg: #1a1a1a;
+  --card-bg: #242424;
+  --text: #ffffff;
+  --text-secondary: #a0a0a0;
+  --danger: #ff4747;
+}
+
+body {
+  margin: 0;
+  display: flex;
+  place-items: center;
+  min-width: 320px;
+  min-height: 100vh;
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+}
+
+.container {
+  width: 100%;
+  max-width: 500px;
+  margin: 0 auto;
+  padding: 1rem;
+  box-sizing: border-box;
+  text-align: center;
+}
+
+h1 {
+  font-size: 2rem;
+  margin: 1rem 0 1.5rem;
+  font-weight: 700;
+  background: linear-gradient(45deg, var(--primary), #00d2ff);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.section {
+  background: var(--card-bg);
+  border-radius: 16px;
+  padding: 1.25rem;
+  margin-bottom: 1rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  transition: transform 0.2s;
+}
+
+@media (max-width: 480px) {
+  .container {
+    padding: 0.75rem;
+  }
+  
+  .bpm-value {
+    font-size: 3.5rem;
+  }
+  
+  h1 {
+    font-size: 1.75rem;
+  }
+
+  .input-row {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+}
+
+.slider {
+  width: 100%;
+  margin: 1.5rem 0;
+  cursor: pointer;
+  height: 40px; /* Larger touch target */
+}
+
+.play-button {
+  width: 100%;
+  padding: 1.2rem; /* Larger for mobile */
+  font-size: 1.2rem;
+  font-weight: 700;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.play-button:active {
+  transform: scale(0.98);
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  cursor: pointer;
+  padding: 0.5rem 0;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+}
+
+.timer-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+input[type="number"], textarea {
+  font-size: 16px; /* Prevents iOS zoom on focus */
+}
+
+.timer-controls input {
+  width: 60px;
+  padding: 0.5rem;
+  border-radius: 4px;
+  border: 1px solid #444;
+  background: #333;
+  color: white;
+  text-align: center;
+}
+
+.time-left {
+  font-family: monospace;
+  font-size: 1.5rem;
+  color: var(--primary);
+}
+
+.reader-inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  text-align: left;
+}
+
+.input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.input-group label {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.input-row {
+  display: flex;
+  gap: 1rem;
+}
+
+.input-row .input-group {
+  flex: 1;
+}
+
+textarea {
+  min-height: 80px;
+  padding: 0.8rem;
+  border-radius: 8px;
+  border: 1px solid #444;
+  background: #333;
+  color: white;
+  resize: vertical;
+}
+
+input[type="number"] {
+  padding: 0.5rem;
+  border-radius: 4px;
+  border: 1px solid #444;
+  background: #333;
+  color: white;
+}
+
+input:focus, textarea:focus {
+  outline: 2px solid var(--primary);
+  border-color: transparent;
+}
