@@ -12,8 +12,8 @@ function App() {
   
   // Timer State
   const [timerEnabled, setTimerEnabled] = useState(false);
-  const [timerMinutes, setTimerMinutes] = useState(5);
-  const [timeLeft, setTimeLeft] = useState(timerMinutes * 60);
+  const [timerMinutes, setTimerMinutes] = useState(1); // Default to 1 min
+  const [timeLeft, setTimeLeft] = useState(60);
 
   // Word Reader State
   const [words, setWords] = useState<string[]>(['A', 'B', 'C', 'D']);
@@ -21,6 +21,8 @@ function App() {
   const [readFrequency, setReadFrequency] = useState(10); // seconds
   const [readVariance, setReadVariance] = useState(3); // seconds
   const [readerEnabled, setReaderEnabled] = useState(false);
+  const [readMode, setReadMode] = useState<'random' | 'sequential'>('random');
+  const [currentIndex, setCurrentIndex] = useState(0);
 
   // Refs for audio and timing
   const audioCtxRef = useRef<AudioContext | null>(null);
@@ -63,7 +65,6 @@ function App() {
     if (!audioCtxRef.current) return;
 
     while (nextClickTimeRef.current < audioCtxRef.current.currentTime + 0.1) {
-      // Schedule Click
       const osc = audioCtxRef.current.createOscillator();
       const envelope = audioCtxRef.current.createGain();
 
@@ -83,26 +84,35 @@ function App() {
 
     // Word Reader Scheduling
     if (readerEnabled && nextSpeechTimeRef.current < audioCtxRef.current.currentTime) {
-      const randomWord = words[Math.floor(Math.random() * words.length)];
-      if (randomWord) {
-        const utterance = new SpeechSynthesisUtterance(randomWord.toLowerCase());
+      let selectedWord = '';
+      
+      if (readMode === 'random') {
+        selectedWord = words[Math.floor(Math.random() * words.length)];
+      } else {
+        selectedWord = words[currentIndex % words.length];
+        setCurrentIndex(prev => (prev + 1) % words.length);
+      }
+
+      if (selectedWord) {
+        const utterance = new SpeechSynthesisUtterance(selectedWord.toLowerCase());
         window.speechSynthesis.speak(utterance);
       }
 
       // Calculate next speech time with variance
-      const variance = (Math.random() * 2 - 1) * readVariance;
+      const variance = readMode === 'random' ? (Math.random() * 2 - 1) * readVariance : 0;
       const nextInterval = Math.max(1, readFrequency + variance);
       nextSpeechTimeRef.current = audioCtxRef.current.currentTime + nextInterval;
     }
 
     timerRef.current = requestAnimationFrame(scheduler);
-  }, [bpm, words, readerEnabled, readFrequency, readVariance]);
+  }, [bpm, words, readerEnabled, readFrequency, readVariance, readMode, currentIndex]);
 
   useEffect(() => {
     if (isPlaying) {
       initAudio();
       nextClickTimeRef.current = audioCtxRef.current!.currentTime;
       nextSpeechTimeRef.current = audioCtxRef.current!.currentTime + readFrequency;
+      if (readMode === 'sequential') setCurrentIndex(0);
       timerRef.current = requestAnimationFrame(scheduler);
     } else {
       if (timerRef.current) cancelAnimationFrame(timerRef.current);
@@ -110,7 +120,7 @@ function App() {
     return () => {
       if (timerRef.current) cancelAnimationFrame(timerRef.current);
     };
-  }, [isPlaying, scheduler, initAudio, readFrequency]);
+  }, [isPlaying, scheduler, initAudio, readFrequency, readMode]);
 
   const handleToggle = () => {
     setIsPlaying(!isPlaying);
@@ -174,14 +184,19 @@ function App() {
       </div>
 
       <div className="section reader-section">
-        <label className="checkbox-label">
-          <input 
-            type="checkbox" 
-            checked={readerEnabled} 
-            onChange={(e) => setReaderEnabled(e.target.checked)} 
-          />
-          Enable Word Reader
-        </label>
+        <div className="reader-header">
+          <label className="checkbox-label">
+            <input 
+              type="checkbox" 
+              checked={readerEnabled} 
+              onChange={(e) => setReaderEnabled(e.target.checked)} 
+            />
+            Enable Word Reader
+          </label>
+          <p className="description">
+            Reads words or letters aloud at specific intervals. Great for drills, physical therapy, or randomized prompts.
+          </p>
+        </div>
         
         <div className="reader-inputs">
           <div className="input-group">
@@ -195,6 +210,17 @@ function App() {
           
           <div className="input-row">
             <div className="input-group">
+              <label>Order</label>
+              <select 
+                value={readMode} 
+                onChange={(e) => setReadMode(e.target.value as 'random' | 'sequential')}
+                className="select-input"
+              >
+                <option value="random">Randomly</option>
+                <option value="sequential">In Order</option>
+              </select>
+            </div>
+            <div className="input-group">
               <label>Frequency (s)</label>
               <input 
                 type="number" 
@@ -202,14 +228,16 @@ function App() {
                 onChange={(e) => setReadFrequency(Math.max(1, parseInt(e.target.value) || 1))}
               />
             </div>
-            <div className="input-group">
-              <label>Variance (±s)</label>
-              <input 
-                type="number" 
-                value={readVariance} 
-                onChange={(e) => setReadVariance(Math.max(0, parseInt(e.target.value) || 0))}
-              />
-            </div>
+            {readMode === 'random' && (
+              <div className="input-group">
+                <label>Variance (±s)</label>
+                <input 
+                  type="number" 
+                  value={readVariance} 
+                  onChange={(e) => setReadVariance(Math.max(0, parseInt(e.target.value) || 0))}
+                />
+              </div>
+            )}
           </div>
         </div>
       </div>

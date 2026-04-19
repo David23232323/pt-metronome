@@ -115,14 +115,31 @@ input[type="number"], textarea {
   font-size: 16px; /* Prevents iOS zoom on focus */
 }
 
-.timer-controls input {
-  width: 60px;
+.reader-header {
+  text-align: left;
+  margin-bottom: 1.5rem;
+}
+
+.description {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  margin-top: -0.5rem;
+}
+
+.select-input {
   padding: 0.5rem;
   border-radius: 4px;
   border: 1px solid #444;
   background: #333;
   color: white;
-  text-align: center;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.select-input:focus {
+  outline: 2px solid var(--primary);
+  border-color: transparent;
 }
 
 .time-left {
