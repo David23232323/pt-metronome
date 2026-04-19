@@ -5,6 +5,9 @@ import './App.css';
 const CLICK_FREQUENCY = 1000;
 const CLICK_DURATION = 0.05;
 
+// 1 second of silence (Base64 encoded MP3)
+const SILENT_MP3 = "data:audio/mpeg;base64,SUQzBAAAAAABAFRYWFgAAAASAAADbWFqb3JfYnJhbmQAZGFzaABUWFhYAAAAEwAAA21pbm9yX3ZlcnNpb24AMABUWFhYAAAAHAAAA2NvbXBhdGlibGVfYnJhbmRzAGlzbzZtcDQyAFRTU0UAAAAPAAADTGF2ZjYwLjEwMC4xMDAAAAAAAAAAAAAAAABf/MUxAAAAANIAAAAAExBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/MUxBcAAAAANIAAAAAExBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/MUxB0AAAAANIAAAAAExBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV";
+
 function App() {
   // Metronome State
   const [bpm, setBpm] = useState(120);
@@ -31,6 +34,7 @@ function App() {
   const timerRef = useRef<number | null>(null);
   const nextSpeechTimeRef = useRef(0);
   const lastWordRef = useRef<string>('');
+  const silentAudioRef = useRef<HTMLAudioElement | null>(null);
 
   // Initialize Audio Context
   const initAudio = useCallback(() => {
@@ -40,6 +44,7 @@ function App() {
     if (audioCtxRef.current.state === 'suspended') {
       audioCtxRef.current.resume();
     }
+    return audioCtxRef.current;
   }, []);
 
   // Timer logic
@@ -70,19 +75,19 @@ function App() {
     if (!audioCtxRef.current) return;
 
     while (nextClickTimeRef.current < audioCtxRef.current.currentTime + 0.1) {
+      const time = nextClickTimeRef.current;
       const osc = audioCtxRef.current.createOscillator();
       const envelope = audioCtxRef.current.createGain();
 
       osc.frequency.value = CLICK_FREQUENCY;
-      envelope.gain.value = 1;
-      envelope.gain.exponentialRampToValueAtTime(1, nextClickTimeRef.current);
-      envelope.gain.exponentialRampToValueAtTime(0.001, nextClickTimeRef.current + CLICK_DURATION);
+      envelope.gain.setValueAtTime(1, time);
+      envelope.gain.exponentialRampToValueAtTime(0.001, time + CLICK_DURATION);
 
       osc.connect(envelope);
       envelope.connect(audioCtxRef.current.destination);
 
-      osc.start(nextClickTimeRef.current);
-      osc.stop(nextClickTimeRef.current + CLICK_DURATION);
+      osc.start(time);
+      osc.stop(time + CLICK_DURATION);
 
       nextClickTimeRef.current += 60.0 / bpm;
     }
@@ -121,9 +126,9 @@ function App() {
   }, [bpm, words, readerEnabled, readFrequency, readVariance, readMode, currentIndex]);
 
   useEffect(() => {
-    if (isPlaying) {
-      nextClickTimeRef.current = audioCtxRef.current!.currentTime;
-      nextSpeechTimeRef.current = audioCtxRef.current!.currentTime + readFrequency;
+    if (isPlaying && audioCtxRef.current) {
+      nextClickTimeRef.current = audioCtxRef.current.currentTime + 0.05;
+      nextSpeechTimeRef.current = audioCtxRef.current.currentTime + readFrequency;
       if (readMode === 'sequential') setCurrentIndex(0);
       lastWordRef.current = '';
       timerRef.current = requestAnimationFrame(scheduler);
@@ -138,9 +143,22 @@ function App() {
   const handleToggle = () => {
     if (!isPlaying) {
       initAudio();
+      
+      // The "Silent Loop" Hack
+      if (!silentAudioRef.current) {
+        silentAudioRef.current = new Audio(SILENT_MP3);
+        silentAudioRef.current.loop = true;
+      }
+      silentAudioRef.current.play().catch(e => console.error("Silent audio failed", e));
+
+      // Unlock speech synthesis
       const dummy = new SpeechSynthesisUtterance("");
       dummy.volume = 0;
       window.speechSynthesis.speak(dummy);
+    } else {
+      if (silentAudioRef.current) {
+        silentAudioRef.current.pause();
+      }
     }
     setIsPlaying(!isPlaying);
   };
