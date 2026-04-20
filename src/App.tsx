@@ -154,7 +154,7 @@ function App() {
 
   const handleToggle = () => {
     if (!isPlaying) {
-      const ctx = initAudio();
+      initAudio();
       
       // Start the silent bridge audio
       if (silentAudioRef.current) {
