@@ -49,14 +49,28 @@ function App() {
 
   // Refs for audio and timing
   const audioCtxRef = useRef<AudioContext | null>(null);
+  const clickBufferRef = useRef<AudioBuffer | null>(null);
   const nextClickTimeRef = useRef(0);
-  const timerRef = useRef<number | null>(null);
+  const intervalIdRef = useRef<number | null>(null);
   const nextSpeechTimeRef = useRef(0);
   const lastWordRef = useRef<string>('');
+  const schedulerFnRef = useRef<() => void>(() => {});
 
   const initAudio = useCallback(() => {
     if (!audioCtxRef.current) {
       audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+
+      // Pre-render the click sound into a reusable buffer
+      const sr = audioCtxRef.current.sampleRate;
+      const len = Math.ceil(CLICK_DURATION * sr);
+      const buf = audioCtxRef.current.createBuffer(1, len, sr);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < len; i++) {
+        const t = i / sr;
+        const envelope = Math.exp(-t * (Math.log(1000) / CLICK_DURATION));
+        data[i] = Math.sin(2 * Math.PI * CLICK_FREQUENCY * t) * envelope;
+      }
+      clickBufferRef.current = buf;
     }
 
     if (audioCtxRef.current.state === 'suspended') {
@@ -77,6 +91,17 @@ function App() {
     src.start();
 
     return audioCtxRef.current;
+  }, []);
+
+  // Resume AudioContext when returning from lock screen / background tab
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible' && audioCtxRef.current?.state === 'suspended') {
+        audioCtxRef.current.resume();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
   }, []);
 
   // Timer logic
@@ -104,7 +129,7 @@ function App() {
 
   // Metronome & Reader Scheduler
   const scheduler = useCallback(() => {
-    if (!audioCtxRef.current) return;
+    if (!audioCtxRef.current || !clickBufferRef.current) return;
 
     const beatInterval = 60.0 / bpm;
     const now = audioCtxRef.current.currentTime;
@@ -116,23 +141,14 @@ function App() {
       nextClickTimeRef.current += missed * beatInterval;
     }
 
-    // Schedule clicks with a generous look-ahead so they're queued
-    // well before playback time, avoiding partially-elapsed envelopes
-    while (nextClickTimeRef.current < now + 0.25) {
-      // Clamp to now so the envelope always starts fresh
+    // Schedule clicks well ahead of time — the Web Audio API handles
+    // precise playback, we just need to keep the queue fed
+    while (nextClickTimeRef.current < now + 0.5) {
       const playTime = Math.max(nextClickTimeRef.current, now);
-      const osc = audioCtxRef.current.createOscillator();
-      const envelope = audioCtxRef.current.createGain();
-
-      osc.frequency.setValueAtTime(CLICK_FREQUENCY, playTime);
-      envelope.gain.setValueAtTime(1, playTime);
-      envelope.gain.exponentialRampToValueAtTime(0.001, playTime + CLICK_DURATION);
-
-      osc.connect(envelope);
-      envelope.connect(audioCtxRef.current.destination);
-
-      osc.start(playTime);
-      osc.stop(playTime + CLICK_DURATION);
+      const src = audioCtxRef.current.createBufferSource();
+      src.buffer = clickBufferRef.current;
+      src.connect(audioCtxRef.current.destination);
+      src.start(playTime);
 
       nextClickTimeRef.current += beatInterval;
     }
@@ -165,24 +181,27 @@ function App() {
       const nextInterval = Math.max(0.5, frequency.value + readVariance);
       nextSpeechTimeRef.current = audioCtxRef.current.currentTime + nextInterval;
     }
-
-    timerRef.current = requestAnimationFrame(scheduler);
   }, [bpm, words, readerEnabled, frequency.value, variance.value, readMode, currentIndex]);
 
+  // Keep the ref always pointing at the latest scheduler closure
+  schedulerFnRef.current = scheduler;
+
+  // Start/stop the interval — only depends on isPlaying so the
+  // interval is never torn down and recreated during playback
   useEffect(() => {
     if (isPlaying && audioCtxRef.current) {
       nextClickTimeRef.current = audioCtxRef.current.currentTime + 0.05;
       nextSpeechTimeRef.current = audioCtxRef.current.currentTime + frequency.value;
       if (readMode === 'sequential') setCurrentIndex(0);
       lastWordRef.current = '';
-      timerRef.current = requestAnimationFrame(scheduler);
+      intervalIdRef.current = window.setInterval(() => schedulerFnRef.current(), 25);
     } else {
-      if (timerRef.current) cancelAnimationFrame(timerRef.current);
+      if (intervalIdRef.current) clearInterval(intervalIdRef.current);
     }
     return () => {
-      if (timerRef.current) cancelAnimationFrame(timerRef.current);
+      if (intervalIdRef.current) clearInterval(intervalIdRef.current);
     };
-  }, [isPlaying, scheduler, frequency.value, readMode]);
+  }, [isPlaying]);
 
   const handleToggle = () => {
     if (!isPlaying) {
