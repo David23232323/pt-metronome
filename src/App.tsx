@@ -29,11 +29,11 @@ function useNumericInput(
 
 function App() {
   // Metronome State
-  const [bpm, setBpm] = useState(120);
+  const [bpm, setBpm] = useState(220);
   const [isPlaying, setIsPlaying] = useState(false);
   
   // Timer State
-  const [timerEnabled, setTimerEnabled] = useState(false);
+  const [timerEnabled, setTimerEnabled] = useState(true);
   const timerMin = useNumericInput(1, { min: 0, integer: true });
   const timerSec = useNumericInput(0, { min: 0, max: 59, integer: true });
   const [timeLeft, setTimeLeft] = useState(60);
